@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Wallet, TrendingUp, Coffee, Package, Bus, GraduationCap, PiggyBank, Calendar, Edit2, Check, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Wallet, TrendingUp, Coffee, Package, Bus, GraduationCap, PiggyBank, Calendar, Edit2, Check, Plus, Trash2, Download } from 'lucide-react';
 
 const BudgetTracker = () => {
   const [expenses, setExpenses] = useState({
@@ -25,6 +25,29 @@ const BudgetTracker = () => {
     faculdade: 500
   });
 
+  // Carregar dados salvos ao iniciar
+  useEffect(() => {
+    const savedData = localStorage.getItem('budgetData');
+    if (savedData) {
+      const data = JSON.parse(savedData);
+      setExpenses(data.expenses || expenses);
+      setTransactions(data.transactions || []);
+      setReservaTotal(data.reservaTotal || 0);
+      setBudget(data.budget || budget);
+    }
+  }, []);
+
+  // Salvar automaticamente quando algo mudar
+  useEffect(() => {
+    const dataToSave = {
+      expenses,
+      transactions,
+      reservaTotal,
+      budget
+    };
+    localStorage.setItem('budgetData', JSON.stringify(dataToSave));
+  }, [expenses, transactions, reservaTotal, budget]);
+
   const addExpense = (category, amount) => {
     const value = parseFloat(amount);
     if (value > 0) {
@@ -36,21 +59,23 @@ const BudgetTracker = () => {
         id: Date.now(),
         category,
         amount: value,
-        date: new Date()
+        date: new Date().toISOString()
       }]);
     }
   };
 
   const resetMonth = () => {
-    setExpenses({
-      reserva: 0,
-      investimento: 0,
-      entretenimento: 0,
-      outras: 0,
-      transporte: 0,
-      faculdade: 0
-    });
-    setTransactions([]);
+    if (confirm('Tem certeza que deseja resetar o mês? Todos os dados serão perdidos!')) {
+      setExpenses({
+        reserva: 0,
+        investimento: 0,
+        entretenimento: 0,
+        outras: 0,
+        transporte: 0,
+        faculdade: 0
+      });
+      setTransactions([]);
+    }
   };
 
   const confirmarReserva = () => {
@@ -85,6 +110,62 @@ const BudgetTracker = () => {
   const getDaysUntilPayday = () => {
     const today = new Date().getDate();
     return today <= 5 ? 5 - today : 35 - today;
+  };
+
+  const exportToExcel = () => {
+    // Cabeçalho do CSV com separador ponto e vírgula para Excel brasileiro
+    let csv = '\uFEFF'; // BOM para UTF-8
+    csv += 'CONTROLE DE ORÇAMENTO MENSAL\n\n';
+    
+    // Tabela de Categorias
+    csv += 'CATEGORIAS\n';
+    csv += 'Categoria;Orçamento;Gasto;Restante;Percentual\n';
+    
+    categories.forEach(cat => {
+      const gasto = expenses[cat.key].toFixed(2).replace('.', ',');
+      const orcamento = budget[cat.key].toFixed(2).replace('.', ',');
+      const restante = (budget[cat.key] - expenses[cat.key]).toFixed(2).replace('.', ',');
+      const percentual = ((expenses[cat.key] / budget[cat.key]) * 100).toFixed(1).replace('.', ',');
+      
+      csv += `${cat.name};R$ ${orcamento};R$ ${gasto};R$ ${restante};${percentual}%\n`;
+    });
+    
+    // Espaço entre tabelas
+    csv += '\n\n';
+    
+    // Tabela de Resumo
+    csv += 'RESUMO GERAL\n';
+    csv += 'Descrição;Valor\n';
+    csv += `Orçamento Total;R$ ${budget.total.toFixed(2).replace('.', ',')}\n`;
+    csv += `Total Gasto;R$ ${getTotalGasto().toFixed(2).replace('.', ',')}\n`;
+    csv += `Disponível;R$ ${getRestante().toFixed(2).replace('.', ',')}\n`;
+    csv += `Reserva Acumulada;R$ ${reservaTotal.toFixed(2).replace('.', ',')}\n`;
+    
+    // Espaço entre tabelas
+    csv += '\n\n';
+    
+    // Tabela de Transações
+    if (transactions.length > 0) {
+      csv += 'HISTÓRICO DE TRANSAÇÕES\n';
+      csv += 'Data;Categoria;Valor\n';
+      transactions.forEach(t => {
+        const date = new Date(t.date).toLocaleDateString('pt-BR');
+        const catName = categories.find(c => c.key === t.category)?.name || t.category;
+        const valor = t.amount.toFixed(2).replace('.', ',');
+        csv += `${date};${catName};R$ ${valor}\n`;
+      });
+    }
+    
+    // Criar arquivo e download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `orcamento_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const categories = [
@@ -133,6 +214,15 @@ const BudgetTracker = () => {
               </>
             )}
           </div>
+          
+          {/* Botão Exportar */}
+          <button
+            onClick={exportToExcel}
+            className="mt-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-2 rounded-xl font-semibold transition shadow-lg flex items-center gap-2 mx-auto"
+          >
+            <Download className="w-4 h-4" />
+            Exportar para Excel
+          </button>
         </div>
 
         {/* Cards Principais */}
@@ -337,6 +427,10 @@ const BudgetTracker = () => {
               <li className="flex items-start gap-2">
                 <span className="text-red-400 mt-1">•</span>
                 <span className="font-semibold">Sua reserva é intocável! Não use em hipótese alguma.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-400 mt-1">•</span>
+                <span className="font-semibold">Seus dados são salvos automaticamente no navegador!</span>
               </li>
             </ul>
           </div>
