@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Wallet, TrendingUp, Coffee, Package, Bus, GraduationCap, PiggyBank, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { Wallet, TrendingUp, Coffee, Package, Bus, GraduationCap, PiggyBank, Calendar, Edit2, Check, Plus, Trash2 } from 'lucide-react';
 
 const BudgetTracker = () => {
   const [expenses, setExpenses] = useState({
@@ -11,9 +11,9 @@ const BudgetTracker = () => {
     faculdade: 0
   });
 
+  const [transactions, setTransactions] = useState([]);
   const [reservaTotal, setReservaTotal] = useState(0);
-  const [diaAtual, setDiaAtual] = useState(new Date().getDate());
-  const [editingBudget, setEditingBudget] = useState(false);
+  const [editingBudget, setEditingBudget] = useState(null);
 
   const [budget, setBudget] = useState({
     total: 3000,
@@ -32,6 +32,12 @@ const BudgetTracker = () => {
         ...prev,
         [category]: prev[category] + value
       }));
+      setTransactions(prev => [...prev, {
+        id: Date.now(),
+        category,
+        amount: value,
+        date: new Date()
+      }]);
     }
   };
 
@@ -44,6 +50,7 @@ const BudgetTracker = () => {
       transporte: 0,
       faculdade: 0
     });
+    setTransactions([]);
   };
 
   const confirmarReserva = () => {
@@ -72,46 +79,56 @@ const BudgetTracker = () => {
   };
 
   const getProgress = (category) => {
-    return (expenses[category] / budget[category]) * 100;
+    return Math.min((expenses[category] / budget[category]) * 100, 100);
+  };
+
+  const getDaysUntilPayday = () => {
+    const today = new Date().getDate();
+    return today <= 5 ? 5 - today : 35 - today;
   };
 
   const categories = [
-    { key: 'faculdade', name: 'Faculdade', icon: GraduationCap, color: 'bg-purple-500' },
-    { key: 'transporte', name: 'Transporte', icon: Bus, color: 'bg-blue-500' },
-    { key: 'investimento', name: 'Investimento Empresa', icon: TrendingUp, color: 'bg-green-500' },
-    { key: 'entretenimento', name: 'Entretenimento', icon: Coffee, color: 'bg-pink-500' },
-    { key: 'outras', name: 'Outras Despesas', icon: Package, color: 'bg-orange-500' }
+    { key: 'faculdade', name: 'Faculdade', icon: GraduationCap, gradient: 'from-purple-500 to-purple-600' },
+    { key: 'transporte', name: 'Transporte', icon: Bus, gradient: 'from-blue-500 to-blue-600' },
+    { key: 'investimento', name: 'Investimento Empresa', icon: TrendingUp, gradient: 'from-green-500 to-green-600' },
+    { key: 'entretenimento', name: 'Entretenimento', icon: Coffee, gradient: 'from-pink-500 to-pink-600' },
+    { key: 'outras', name: 'Outras Despesas', icon: Package, gradient: 'from-orange-500 to-orange-600' }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 md:p-8">
+      <div className="max-w-5xl mx-auto">
+        
+        {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Meu OrÃ§amento Mensal</h1>
-          <div className="flex items-center justify-center gap-4">
-            {editingBudget ? (
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            Meu Orçamento Mensal
+          </h1>
+          <div className="flex items-center justify-center gap-3">
+            {editingBudget === 'total' ? (
               <>
                 <input
                   type="number"
                   value={budget.total}
                   onChange={(e) => updateBudgetValue('total', e.target.value)}
-                  className="bg-slate-700 text-white text-xl px-4 py-2 rounded-lg w-40 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="bg-slate-800 text-white text-xl px-4 py-2 rounded-xl w-40 text-center focus:outline-none focus:ring-2 focus:ring-blue-500 border border-slate-700"
+                  autoFocus
                 />
                 <button
-                  onClick={() => setEditingBudget(false)}
-                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold transition"
+                  onClick={() => setEditingBudget(null)}
+                  className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-xl transition"
                 >
-                  Salvar
+                  <Check className="w-5 h-5" />
                 </button>
               </>
             ) : (
               <>
-                <p className="text-slate-300 text-xl">R$ {budget.total.toFixed(2)}/mÃªs</p>
+                <p className="text-slate-300 text-xl">R$ {budget.total.toFixed(2)}/mês</p>
                 <button
-                  onClick={() => setEditingBudget(true)}
-                  className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded-lg text-sm transition"
+                  onClick={() => setEditingBudget('total')}
+                  className="text-slate-400 hover:text-white transition"
                 >
-                  Editar
+                  <Edit2 className="w-4 h-4" />
                 </button>
               </>
             )}
@@ -119,92 +136,143 @@ const BudgetTracker = () => {
         </div>
 
         {/* Cards Principais */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-green-100">DisponÃ­vel</span>
-              <Wallet className="w-6 h-6" />
+        <div className="grid md:grid-cols-3 gap-4 mb-8">
+          
+          {/* Disponível */}
+          <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 shadow-2xl border border-emerald-400/20">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-emerald-50 text-sm font-medium">Disponível</span>
+              <div className="bg-white/20 p-2 rounded-lg">
+                <Wallet className="w-5 h-5 text-white" />
+              </div>
             </div>
-            <p className="text-3xl font-bold">R$ {getRestante().toFixed(2)}</p>
+            <p className="text-4xl font-bold text-white mb-1">R$ {getRestante().toFixed(2)}</p>
+            <div className="h-1 bg-emerald-400/30 rounded-full mt-3">
+              <div 
+                className="h-1 bg-white rounded-full transition-all"
+                style={{ width: `${100 - (getTotalGasto() / budget.total * 100)}%` }}
+              />
+            </div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-blue-100">Reserva Acumulada</span>
-              <PiggyBank className="w-6 h-6" />
+          {/* Reserva Acumulada */}
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 shadow-2xl border border-blue-400/20">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-blue-50 text-sm font-medium">Reserva Acumulada</span>
+              <div className="bg-white/20 p-2 rounded-lg">
+                <PiggyBank className="w-5 h-5 text-white" />
+              </div>
             </div>
-            <p className="text-3xl font-bold">R$ {reservaTotal.toFixed(2)}</p>
+            <p className="text-4xl font-bold text-white mb-3">R$ {reservaTotal.toFixed(2)}</p>
             {expenses.reserva === 0 && (
               <button 
                 onClick={confirmarReserva}
-                className="mt-3 bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-50 transition"
+                className="w-full bg-white/90 hover:bg-white text-blue-600 px-4 py-2 rounded-xl text-sm font-semibold transition shadow-lg"
               >
-                Guardar R$ 600 deste mÃªs
+                Guardar R$ {budget.reserva.toFixed(0)} deste mês
               </button>
             )}
           </div>
 
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-purple-100">Dias atÃ© receber</span>
-              <Calendar className="w-6 h-6" />
+          {/* Dias até receber */}
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 shadow-2xl border border-purple-400/20">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-purple-50 text-sm font-medium">Dias até receber</span>
+              <div className="bg-white/20 p-2 rounded-lg">
+                <Calendar className="w-5 h-5 text-white" />
+              </div>
             </div>
-            <p className="text-3xl font-bold">{diaAtual <= 5 ? 5 - diaAtual : 35 - diaAtual} dias</p>
-            <p className="text-sm text-purple-100 mt-1">PrÃ³ximo: dia 5</p>
+            <p className="text-4xl font-bold text-white">{getDaysUntilPayday()} dias</p>
+            <p className="text-purple-100 text-sm mt-2">Próximo: dia 5</p>
           </div>
         </div>
 
-        {/* Categorias */}
-        <div className="bg-slate-800 rounded-xl p-6 shadow-xl mb-6">
+        {/* Controle por Categoria */}
+        <div className="mb-8">
           <h2 className="text-2xl font-bold text-white mb-6">Controle por Categoria</h2>
           
-          <div className="space-y-6">
+          <div className="grid gap-4">
             {categories.map(cat => {
               const Icon = cat.icon;
               const remaining = getRemaining(cat.key);
               const progress = getProgress(cat.key);
               
               return (
-                <div key={cat.key} className="bg-slate-700 rounded-lg p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`${cat.color} p-2 rounded-lg`}>
-                        <Icon className="w-5 h-5 text-white" />
+                <div key={cat.key} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-5 border border-slate-700/50 hover:border-slate-600 transition">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className={`bg-gradient-to-br ${cat.gradient} p-3 rounded-xl shadow-lg`}>
+                        <Icon className="w-6 h-6 text-white" />
                       </div>
-                      <div>
-                        <h3 className="text-white font-semibold">{cat.name}</h3>
+                      <div className="flex-1">
+                        <h3 className="text-white font-semibold text-lg mb-1">{cat.name}</h3>
                         <div className="flex items-center gap-2">
-                          <p className="text-slate-400 text-sm">OrÃ§amento:</p>
-                          <input
-                            type="number"
-                            value={budget[cat.key]}
-                            onChange={(e) => updateBudgetValue(cat.key, e.target.value)}
-                            className="bg-slate-600 text-white text-sm px-2 py-1 rounded w-24 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
+                          {editingBudget === cat.key ? (
+                            <>
+                              <input
+                                type="number"
+                                value={budget[cat.key]}
+                                onChange={(e) => updateBudgetValue(cat.key, e.target.value)}
+                                className="bg-slate-700 text-white text-sm px-3 py-1 rounded-lg w-28 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => setEditingBudget(null)}
+                                className="text-green-400 hover:text-green-300"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-slate-400 text-sm">Orçamento: R$ {budget[cat.key].toFixed(2)}</span>
+                              <button
+                                onClick={() => setEditingBudget(cat.key)}
+                                className="text-slate-500 hover:text-slate-300"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`text-lg font-bold ${remaining < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                      <p className={`text-2xl font-bold ${remaining < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                         R$ {remaining.toFixed(2)}
                       </p>
-                      <p className="text-slate-400 text-sm">Restante</p>
+                      <p className="text-slate-500 text-xs">restante</p>
                     </div>
                   </div>
 
-                  <div className="w-full bg-slate-600 rounded-full h-2 mb-3">
-                    <div 
-                      className={`${cat.color} h-2 rounded-full transition-all`}
-                      style={{ width: `${Math.min(progress, 100)}%` }}
-                    />
+                  {/* Progress Bar */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs text-slate-400 mb-2">
+                      <span>R$ {expenses[cat.key].toFixed(2)} gasto</span>
+                      <span>{progress.toFixed(0)}%</span>
+                    </div>
+                    <div className="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className={`bg-gradient-to-r ${cat.gradient} h-2 rounded-full transition-all duration-500 shadow-lg`}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
                   </div>
 
+                  {/* Add Expense */}
                   <div className="flex gap-2">
                     <input
                       type="number"
                       placeholder="Valor gasto"
-                      className="flex-1 bg-slate-600 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 bg-slate-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 border border-slate-600"
                       id={`input-${cat.key}`}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          const input = document.getElementById(`input-${cat.key}`);
+                          addExpense(cat.key, input.value);
+                          input.value = '';
+                        }
+                      }}
                     />
                     <button
                       onClick={() => {
@@ -212,49 +280,64 @@ const BudgetTracker = () => {
                         addExpense(cat.key, input.value);
                         input.value = '';
                       }}
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition"
+                      className={`bg-gradient-to-r ${cat.gradient} hover:opacity-90 text-white px-6 py-3 rounded-xl font-semibold transition shadow-lg flex items-center gap-2`}
                     >
+                      <Plus className="w-4 h-4" />
                       Adicionar
                     </button>
                   </div>
-
-                  <p className="text-slate-400 text-sm mt-2">
-                    Gasto atÃ© agora: R$ {expenses[cat.key].toFixed(2)}
-                  </p>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Resumo e AÃ§Ãµes */}
-        <div className="bg-slate-800 rounded-xl p-6 shadow-xl">
-          <h2 className="text-2xl font-bold text-white mb-4">Resumo do MÃªs</h2>
+        {/* Resumo Final */}
+        <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
+          <h2 className="text-2xl font-bold text-white mb-6">Resumo do Mês</h2>
+          
           <div className="grid md:grid-cols-2 gap-4 mb-6">
-            <div className="bg-slate-700 rounded-lg p-4">
-              <p className="text-slate-400 mb-1">Total Gasto</p>
-              <p className="text-2xl font-bold text-white">R$ {getTotalGasto().toFixed(2)}</p>
+            <div className="bg-slate-700/50 rounded-xl p-4 border border-slate-600">
+              <p className="text-slate-400 text-sm mb-1">Total Gasto</p>
+              <p className="text-3xl font-bold text-white">R$ {getTotalGasto().toFixed(2)}</p>
             </div>
-            <div className="bg-slate-700 rounded-lg p-4">
-              <p className="text-slate-400 mb-1">Percentual Usado</p>
-              <p className="text-2xl font-bold text-white">{((getTotalGasto() / budget.total) * 100).toFixed(1)}%</p>
+            <div className="bg-slate-700/50 rounded-xl p-4 border border-slate-600">
+              <p className="text-slate-400 text-sm mb-1">Percentual Usado</p>
+              <p className="text-3xl font-bold text-white">{((getTotalGasto() / budget.total) * 100).toFixed(1)}%</p>
             </div>
           </div>
 
           <button
             onClick={resetMonth}
-            className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold transition"
+            className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-4 rounded-xl font-semibold transition shadow-lg flex items-center justify-center gap-2"
           >
-            Resetar MÃªs (Novo Ciclo)
+            <Trash2 className="w-5 h-5" />
+            Resetar Mês (Novo Ciclo)
           </button>
 
-          <div className="mt-6 bg-blue-900 bg-opacity-50 rounded-lg p-4 border border-blue-700">
-            <h3 className="text-blue-300 font-semibold mb-2">ðŸ’¡ Dicas:</h3>
-            <ul className="text-blue-200 text-sm space-y-1">
-              <li>â€¢ Guarde os R$ 600 da reserva assim que receber</li>
-              <li>â€¢ Separe R$ 400 para os dias 1-5 do prÃ³ximo mÃªs</li>
-              <li>â€¢ Use em mÃ©dia R$ 60/dia do restante</li>
-              <li>â€¢ Sua reserva nÃ£o pode ser tocada!</li>
+          {/* Dicas */}
+          <div className="mt-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl p-5 border border-blue-500/20">
+            <h3 className="text-blue-300 font-semibold mb-3 flex items-center gap-2">
+              <span className="text-2xl">💡</span>
+              Dicas para Organizar seu Orçamento
+            </h3>
+            <ul className="text-slate-300 text-sm space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-blue-400 mt-1">•</span>
+                <span>Guarde os R$ {budget.reserva.toFixed(0)} da reserva assim que receber</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-400 mt-1">•</span>
+                <span>Separe R$ 400 para os dias 1-5 do próximo mês</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-400 mt-1">•</span>
+                <span>Use em média R$ 60/dia do restante para não ultrapassar</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-red-400 mt-1">•</span>
+                <span className="font-semibold">Sua reserva é intocável! Não use em hipótese alguma.</span>
+              </li>
             </ul>
           </div>
         </div>
